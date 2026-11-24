@@ -1,7 +1,7 @@
 # Forecasting intermittent bike-share demand
 
-[![CI](https://github.com/Triki-Amir/bikeshare-intermittent-forecasting/actions/workflows/ci.yml/badge.svg)](https://github.com/Triki-Amir/bikeshare-intermittent-forecasting/actions/workflows/ci.yml)
-[![CD](https://github.com/Triki-Amir/bikeshare-intermittent-forecasting/actions/workflows/cd.yml/badge.svg)](https://github.com/Triki-Amir/bikeshare-intermittent-forecasting/actions/workflows/cd.yml)
+[![CI](https://github.com/Triki-Amir/Bike-Sharing-Demand-Forecasting/actions/workflows/ci.yml/badge.svg)](https://github.com/Triki-Amir/Bike-Sharing-Demand-Forecasting/actions/workflows/ci.yml)
+[![CD](https://github.com/Triki-Amir/Bike-Sharing-Demand-Forecasting/actions/workflows/cd.yml/badge.svg)](https://github.com/Triki-Amir/Bike-Sharing-Demand-Forecasting/actions/workflows/cd.yml)
 
 **On lumpy stations, a Markov-chain + Negative Binomial model cuts median MASE by 21% vs seasonal naive
 (1.29 → 1.02); on intermittent stations Croston cuts it by 17% (1.18 → 0.98), with the Markov model a
