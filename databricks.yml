@@ -1,0 +1,78 @@
+# Databricks Asset Bundle: deploys the notebooks and src/ to the workspace and defines the
+# one-click job that rebuilds the whole pipeline (01 -> 06) on serverless compute.
+#
+#   databricks bundle validate -t dev
+#   databricks bundle deploy   -t dev
+#   databricks bundle run bikeshare_forecast_pipeline -t dev
+bundle:
+  name: bikeshare_intermittent_forecasting
+
+variables:
+  catalog:
+    description: Unity Catalog catalog
+    default: workspace
+  schema:
+    description: Schema holding the volume and all Delta tables
+    default: bikeshare
+
+sync:
+  exclude:
+    - data/**
+    - docs/**
+    - tests/**
+    - .github/**
+
+resources:
+  jobs:
+    bikeshare_forecast_pipeline:
+      name: bikeshare_forecast_pipeline
+      description: Bronze -> silver -> gold -> segmentation -> backtest -> report (serverless).
+      max_concurrent_runs: 1
+      # Weekly schedule, kept PAUSED so it does not use the Free Edition quota.
+      schedule:
+        quartz_cron_expression: "0 0 6 ? * MON"
+        timezone_id: America/New_York
+        pause_status: PAUSED
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+      tasks:
+        - task_key: bronze_ingest
+          notebook_task:
+            notebook_path: ./notebooks/01_bronze_ingest.py
+        - task_key: silver_clean
+          depends_on:
+            - task_key: bronze_ingest
+          notebook_task:
+            notebook_path: ./notebooks/02_silver_clean.py
+        - task_key: gold_daily
+          depends_on:
+            - task_key: silver_clean
+          notebook_task:
+            notebook_path: ./notebooks/03_gold_daily.py
+        - task_key: segmentation
+          depends_on:
+            - task_key: gold_daily
+          notebook_task:
+            notebook_path: ./notebooks/04_segmentation.py
+        - task_key: backtest
+          depends_on:
+            - task_key: segmentation
+          notebook_task:
+            notebook_path: ./notebooks/05_backtest.py
+        - task_key: report
+          depends_on:
+            - task_key: backtest
+          notebook_task:
+            notebook_path: ./notebooks/06_report.py
+
+targets:
+  dev:
+    mode: development
+    default: true
+  prod:
+    mode: production
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}

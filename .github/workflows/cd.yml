@@ -1,0 +1,91 @@
+name: CD
+
+# Deploys the Databricks Asset Bundle after CI succeeds on main, and on demand.
+# Needs repository secrets DATABRICKS_HOST and DATABRICKS_TOKEN; without them every job
+# is skipped with a notice, so the pipeline stays green on forks and before setup.
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Bundle target
+        type: choice
+        options: [prod, dev]
+        default: prod
+      upload_data:
+        description: Download the raw data on the runner and upload it to the Volume
+        type: boolean
+        default: false
+      run_job:
+        description: Run the pipeline job after deploying
+        type: boolean
+        default: false
+
+concurrency:
+  group: cd-${{ github.event.inputs.target || 'prod' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+  TARGET: ${{ github.event.inputs.target || 'prod' }}
+
+jobs:
+  deploy:
+    name: Deploy bundle
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Check Databricks secrets
+        id: secrets
+        run: |
+          if [ -n "$DATABRICKS_HOST" ] && [ -n "$DATABRICKS_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::DATABRICKS_HOST / DATABRICKS_TOKEN not set - deployment skipped."
+          fi
+      - uses: actions/checkout@v4
+        if: steps.secrets.outputs.configured == 'true'
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: databricks/setup-cli@main
+        if: steps.secrets.outputs.configured == 'true'
+      - name: Validate
+        if: steps.secrets.outputs.configured == 'true'
+        run: databricks bundle validate -t "$TARGET"
+      - name: Deploy
+        if: steps.secrets.outputs.configured == 'true'
+        run: databricks bundle deploy -t "$TARGET"
+
+      # ---- optional: refresh raw data in the Unity Catalog Volume ----------------------
+      - uses: actions/setup-python@v5
+        if: steps.secrets.outputs.configured == 'true' && github.event.inputs.upload_data == 'true'
+        with:
+          python-version: "3.12"
+      - name: Download raw data on the runner
+        if: steps.secrets.outputs.configured == 'true' && github.event.inputs.upload_data == 'true'
+        run: |
+          pip install -e .
+          python scripts/download_trips.py
+          python scripts/fetch_stations.py
+          python scripts/fetch_weather.py
+      - name: Upload to the Volume
+        if: steps.secrets.outputs.configured == 'true' && github.event.inputs.upload_data == 'true'
+        run: |
+          databricks schemas create bikeshare workspace || true
+          databricks volumes create workspace bikeshare raw MANAGED || true
+          databricks fs cp --recursive --overwrite data/raw/trips dbfs:/Volumes/workspace/bikeshare/raw/trips
+          databricks fs cp --recursive --overwrite data/raw/external dbfs:/Volumes/workspace/bikeshare/raw/external
+
+      # ---- optional: run the job --------------------------------------------------------
+      - name: Run pipeline job
+        if: steps.secrets.outputs.configured == 'true' && github.event.inputs.run_job == 'true'
+        run: databricks bundle run bikeshare_forecast_pipeline -t "$TARGET"
