@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest==9.2.0
+pytest-cov==7.1.0
+ruff==0.17.6
+# Optional: run the Databricks SQL tests locally (needs Java 17/21; Linux/macOS/WSL recommended)
+# pyspark==4.3.0

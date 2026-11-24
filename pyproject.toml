@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bikecast"
+version = "1.0.0"
+description = "Intermittent demand forecasting for quiet Capital Bikeshare stations"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "statsmodels>=0.14",
+    "statsforecast>=1.7",
+    "matplotlib>=3.8",
+    "pyarrow>=14",
+    "requests>=2.31",
+    "holidays>=0.50",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.6"]
+spark = ["pyspark>=3.5,<5"]
+
+[project.scripts]
+bikecast-run = "bikecast.run_local:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+markers = [
+    "spark: tests that need a local PySpark + Java runtime",
+    "slow: end-to-end tests that run the full local pipeline",
+]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::FutureWarning"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+extend-exclude = [".venv", "data"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "SIM"]
+ignore = ["N803", "N806", "N812", "N999", "B905"]
+
+[tool.ruff.lint.per-file-ignores]
+"notebooks/*.py" = ["E402", "F821", "E501", "I001"]
+"tests/*.py" = ["N802"]
+
+[tool.coverage.run]
+source = ["bikecast"]
+omit = ["*/plots.py"]

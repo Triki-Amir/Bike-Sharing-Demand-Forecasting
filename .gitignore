@@ -1,0 +1,38 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+build/
+dist/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Data and outputs (never committed)
+data/
+*.zip
+*.parquet
+
+# Secrets
+.env
+.databrickscfg
+
+# Databricks Asset Bundles
+.databricks/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Personal planning documents
+Guide*.docx
+~$*.docx
